@@ -1,9 +1,3 @@
-# PMS plugin framework
-import string, sys, os
-import urllib
-
-####################################################################################################
-
 VIDEO_PREFIX = "/video/kanal5play"
 
 NAME = L('Title')
@@ -64,7 +58,7 @@ def UpdateCache():
 	menuItems = htmlPage.xpath('//div[@class="k5-AToZPanel-program-wrapper"]')
 
 	for menuItem in menuItems:
-		subpage_url = urllib.quote(menuItem.xpath('./a')[0].get('href').encode("utf-8"))
+		subpage_url = String.Quote(menuItem.xpath('./a')[0].get('href').encode("utf-8"), usePlus=False)
 		replacements = {'/program/':''}
 		for i, j in replacements.iteritems():
 			show_id = subpage_url.replace(i, j)
@@ -294,7 +288,7 @@ def ShowSubMenu(sender, section_type):
                 summary = menuItem.xpath('./a')[0].get('title')
                 Log(title)
                 #subtitle = menuItem.xpath('./p')[0].text
-                subpage_url = urllib.quote(menuItem.xpath('./a')[0].get('href').encode("utf-8"))
+                subpage_url = String.Quote(menuItem.xpath('./a')[0].get('href').encode("utf-8"), usePlus=False)
                 replacements = {'/program/':'','/visa':''}
                 for i, j in replacements.iteritems():
                 	subpage_url = subpage_url.replace(i, j)
