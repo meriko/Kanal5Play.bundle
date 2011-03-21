@@ -6,8 +6,8 @@
         
         <!--<site agent="Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_5_5; en-us) AppleWebKit/525.26.2 (KHTML, like Gecko) Version/3.2 Safari/525.26.12"> -->
         
-        <crop x="0" y="5" width="640" height="360" />
-        <seekbar type="simple">
+        <crop x="30" y="60" width="640" height="360" />
+        <!-- <seekbar type="simple">
                 <start x="72" y="324" />
                 <end   x="440" y="324" />
                 <played>
@@ -15,7 +15,7 @@
                                 
                 </played>
         </seekbar>
-
+-->
         <!-- PLAYING -->
         <state name="playing">
                 <event>
@@ -28,20 +28,20 @@
                         </action>
                 </event>
                 
-                <!-- Video ends -->
+                <!-- Video ends
                 <event>	
                         <condition>
-                                <color x="160" y="230" rgb="0c0a08"/>
+                                <color x="190" y="310" rgb="444241"/>
                         </condition>
                         <and>
                         <condition>
-                                <color x="50" y="230" rgb="0c0a08"/>
+                                <color x="240" y="210" rgb="006aaf"/>
                         </condition>
                         </and>
                         <action>
                                 <goto state="end" />
                         </action>
-                </event>
+                </event>-->
         </state>
         
         <!-- PAUSED -->
@@ -51,7 +51,7 @@
                                 <command name="play" />
                         </condition>
                         <action>
-                                <click x="35" y="324" />
+                                <click x="65" y="354" />
                                 <goto state="playing" />
                         </action>
                 </event>
