@@ -130,7 +130,7 @@ def VideoMainMenu():
                 ShowSubMenu,
                 L('Shows'),
                 summary=L('Program_summary'),
-                thumb=R("ikon-program.png"),
+                thumb=R("ikon-tvprogram.png"),
                 art=R(ART),
             ), section_type="Program"
         )
@@ -154,7 +154,7 @@ def VideoMainMenu():
                 LatestMenu,
                 L('LatestShows'),
                 summary=L('Program_summary'),
-                thumb=R("ikon-program.png"),
+                thumb=R("ikon-senasteprogram.png"),
                 art=R(ART),
             ), section_type="Program"
         )
@@ -166,7 +166,7 @@ def VideoMainMenu():
                 LatestMenu,
                 L('LatestClips'),
                 summary=L('Klipp_summary'),
-                thumb=R("ikon-klipp.png"),
+                thumb=R("ikon-senasteklipp.png"),
                 art=R(ART),
             ), section_type="Klipp"
         )
@@ -183,7 +183,7 @@ def VideoMainMenu():
                 L('Search'),
                 L('Searchsubtitle'),
                 summary=L('Search_summary'),
-                thumb=R("search.png"),
+                thumb=R("ikon-sok.png"),
                 art=R(ART)
             )
         )
