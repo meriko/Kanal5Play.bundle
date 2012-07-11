@@ -204,9 +204,11 @@ def CallbackExample(sender):
 
 # Part of the "search" example 
 # query will contain the string that the user entered
+# We use a default query to allow the automated tested to call this
+# without specify any additional arguments.
 # see also:
 #   http://dev.plexapp.com/docs/Objects.html#InputDirectoryItem
-def SearchResults(sender,query=None,section_type="Search"):
+def SearchResults(sender,query='the',section_type="Search"):
 
 	dir = MediaContainer(title2=L(section_type), viewGroup="InfoList")
 	
