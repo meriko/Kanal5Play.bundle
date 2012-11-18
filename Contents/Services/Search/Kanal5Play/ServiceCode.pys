@@ -12,11 +12,11 @@ def Search(query):
 		summary = video['shortDescription']
 		thumb = video['thumbnailURL']
 		duration = video['length']
-		date = Datetime.ParseDate(video['shownOnTVDate']).date()
-		url = VIDEO_PAGER_URL % video['referenceId']
+		date = Datetime.ParseDate(video['startDate']).date()
+		url = VIDEO_PAGE_URL % video['referenceId']
 		
 		if video['type'] == "CLIP":
-			oc.add(VideoClipObject(url=url, title=title, summary=summary, duration=duration, originally_available_at=date, thumb=thumb))
+			pass
 		elif video['type'] == "PROGRAM":
 			season = int(video['season'])
 			episode = int(video['episode'])
