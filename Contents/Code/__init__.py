@@ -7,11 +7,9 @@ ICON          = 'icon-default.png'
 BASE_URL	= 'http://www.kanal5play.se'
 API_URL		= BASE_URL + '/api'
 PROGRAMS_URL	= API_URL + '/listPrograms'
-VIDEOL_LIST_URL	= API_URL + '/listVideos?programId=%s&format=FLASH'
+VIDEO_LIST_URL	= API_URL + '/listVideos?programId=%s&format=FLASH'
 
 VIDEO_URL	= BASE_URL + '/play/program/%s/video/%s'
-
-SEARCH_API_URL = "http://www.kanal5play.se/api/videos/search/%s"
 
 ####################################################################################################
 
@@ -20,24 +18,28 @@ def Start():
     ObjectContainer.art = R(ART)
     ObjectContainer.title1 = NAME
     DirectoryObject.thumb = R(ICON)
+    DirectoryObject.art = R(ART)
 
 ####################################################################################################
 @handler('/video/kanal5play', NAME, thumb=ICON, art=ART)
 def MainMenu():
-    oc = ObjectContainer()
-    
-    oc.add(DirectoryObject(key=Callback(ShowSubMenu, section_type="Program"), title=L('Shows'), summary=L('Program_summary'), thumb=R('ikon-tvprogram.png')))
-    oc.add(DirectoryObject(key=Callback(ShowSubMenu, section_type="Klipp"), title=L('Clip'), summary=L('Klipp_summary'), thumb=R('ikon-klipp.png')))
-    oc.add(SearchDirectoryObject(identifier='com.plexapp.plugins.kanal5play', title=L('Search'), summary=L('Search_summary'), prompt=L('Searchsubtitle'), thumb=R('ikon-sok.png')))
-    
-    return oc
+	
+	oc = ObjectContainer()
+
+	HTTP.PreCache(PROGRAMS_URL)
+	
+	oc.add(DirectoryObject(key=Callback(ShowSubMenu, section_type="Program"), title=L('Shows'), summary=L('Program_summary'), thumb=R('ikon-tvprogram.png')))
+	oc.add(DirectoryObject(key=Callback(ShowSubMenu, section_type="Klipp"), title=L('Clip'), summary=L('Klipp_summary'), thumb=R('ikon-klipp.png')))
+	oc.add(SearchDirectoryObject(identifier='com.plexapp.plugins.kanal5play', title=L('Search'), summary=L('Search_summary'), prompt=L('Searchsubtitle'), thumb=R('ikon-sok.png')))
+
+	return oc
 
 ####################################################################################################
 @route('video/kanal5play/showsubmenu')
 def ShowSubMenu(section_type):
         oc = ObjectContainer(title2=section_type)
         
-        shows = JOSN.ObjectFromURL(PROGRAMS_URL)
+        shows = JSON.ObjectFromURL(PROGRAMS_URL)
 
         for show in shows:
                 title = show['name']
@@ -47,10 +49,10 @@ def ShowSubMenu(section_type):
                 
                 if section_type == "Program":
                         if int(show['playableEpisodesCount']) > 0:
-                                oc.add(DirectoryObject(key=Callback(ProgramShowMenu, show_id=show_id, show_title=title), title=title, summary=summary, thumb=Resource.ContentsofURLWithFallback(url=thumb, fallback=ICON)))
+                                oc.add(DirectoryObject(key=Callback(ProgramShowMenu, show_id=show_id, show_title=title), title=title, summary=summary, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON)))
                 else:
                         if int(show['playableVideosCount']) > 0:
-                                oc.add(DirectoryObject(key=Callback(KlippShowMenu, show_id=show_id, show_title=title), title=title, summary=summary, thumb=Resource.ContentsofURLWithFallback(url=thumb, fallback=ICON)))
+                                oc.add(DirectoryObject(key=Callback(KlippShowMenu, show_id=show_id, show_title=title), title=title, summary=summary, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON)))
                                 
         if len(oc) == 0:
                 return ObjectContainer(header=L('No_Results'), message=L('No_video'))
@@ -64,9 +66,9 @@ def ProgramShowMenu(show_id, show_title):
 	
 	Log.Debug("Program Show Sektion")
 	data_url = VIDEO_LIST_URL % show_id
-	result = JSON.ObjectFromURL(data_url, cacheTime=0)
+	results = JSON.ObjectFromURL(data_url, cacheTime=0)
 
-	for video in result["items"]:
+	for video in results:
 		if video['type'] != 'TVTV_EPISODE':
 			continue
 		
@@ -75,7 +77,7 @@ def ProgramShowMenu(show_id, show_title):
 		duration = int(video['length'])
 		episode = int(video['episodeNumber'])
 		season = int(video['seasonNumber'])
-		airdate = Datetime.FromTimestamp(video['shownOnTvDateTimestamp'])
+		airdate = Datetime.FromTimestamp(int(video['shownOnTvDateTimestamp'])/1000)
 		thumb = video['posterUrl']
 		video_id = video['id']
 		url = VIDEO_URL % (show_id, video_id)
@@ -94,16 +96,16 @@ def KlippShowMenu(show_id, show_title):
 	
 	Log.Debug("Klipp Show Sektion")
 	data_url = VIDEO_LIST_URL % show_id
-	result = JSON.ObjectFromURL(data_url, cacheTime=0)
+	results = JSON.ObjectFromURL(data_url, cacheTime=0)
 
-	for video in result["items"]:
+	for video in results:
 		if video['type'] == 'TVTV_EPISODE':
 			continue
 		
 		title = video['title']
 		summary = video['description']
 		duration = int(video['length'])
-		airdate = Datetime.FromTimestamp(video['shownOnTvDateTimestamp'])
+		airdate = Datetime.FromTimestamp(int(video['shownOnTvDateTimestamp'])/1000)
 		thumb = video['posterUrl']
 		video_id = video['id']
 		url = VIDEO_URL % (show_id, video_id)
