@@ -19,5 +19,9 @@
 	<array>
 		<string>Flash</string>
 	</array>
+	<key>PlexFrameworkFlags</key>
+	<array>
+		<string>UseRealRTMP</string>
+	</array>
 </dict>
 </plist>
