@@ -4,7 +4,7 @@ VIDEO_PAGE_URL = "http://www.kanal5play.se/program/play/%s"
 ####################################################################################################
 def Search(query):
 
-	oc = ObjectContainer(title2='Search Results')
+	oc = ObjectContainer(title1='Kanal 5 Play', title2='Search Results')
 	results = JSON.ObjectFromURL(SEARCH_URL % query)
 
 	for video in results:
