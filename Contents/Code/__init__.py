@@ -3,7 +3,6 @@ NAME = L('Title')
 ART           = 'art-default.jpg'
 ICON          = 'icon-default.png'
 
-#URLs to xml/player
 BASE_URL	= 'http://www.kanal5play.se'
 API_URL		= BASE_URL + '/api'
 PROGRAMS_URL	= API_URL + '/listPrograms'
@@ -62,9 +61,8 @@ def ShowSubMenu(section_type):
 ####################################################################################################
 @route('/video/kanal5play/programshowmenu')
 def ProgramShowMenu(show_id, show_title):
-	oc = ObjectContainer(title2=show_title)
+	oc = ObjectContainer(title2=unicode(show_title))
 	
-	Log.Debug("Program Show Sektion")
 	data_url = VIDEO_LIST_URL % show_id
 	results = JSON.ObjectFromURL(data_url, cacheTime=0)
 
@@ -74,10 +72,12 @@ def ProgramShowMenu(show_id, show_title):
 		
 		title = video['title']
 		summary = video['description']
-		duration = int(video['length'])
+		try: duration = int(video['length'])
+		except: duration = None
 		episode = int(video['episodeNumber'])
 		season = int(video['seasonNumber'])
-		airdate = Datetime.FromTimestamp(int(video['shownOnTvDateTimestamp'])/1000)
+		try: airdate = Datetime.FromTimestamp(int(video['shownOnTvDateTimestamp'])/1000)
+		except: airdate = None
 		thumb = video['posterUrl']
 		video_id = video['id']
 		url = VIDEO_URL % (show_id, video_id)
@@ -92,9 +92,8 @@ def ProgramShowMenu(show_id, show_title):
 ####################################################################################################
 @route('/video/kanal5play/klippshowmenu')
 def KlippShowMenu(show_id, show_title):
-	oc = ObjectContainer(title2=show_title)
+	oc = ObjectContainer(title2=unicode(show_title))
 	
-	Log.Debug("Klipp Show Sektion")
 	data_url = VIDEO_LIST_URL % show_id
 	results = JSON.ObjectFromURL(data_url, cacheTime=0)
 
@@ -104,8 +103,10 @@ def KlippShowMenu(show_id, show_title):
 		
 		title = video['title']
 		summary = video['description']
-		duration = int(video['length'])
-		airdate = Datetime.FromTimestamp(int(video['shownOnTvDateTimestamp'])/1000)
+		try: duration = int(video['length'])
+		except: duration = None
+		try: airdate = Datetime.FromTimestamp(int(video['shownOnTvDateTimestamp'])/1000)
+		except: airdate = None
 		thumb = video['posterUrl']
 		video_id = video['id']
 		url = VIDEO_URL % (show_id, video_id)
@@ -116,66 +117,3 @@ def KlippShowMenu(show_id, show_title):
 		return ObjectContainer(header=L('No_Results'), message=L('No_Programs'))
 	else:
 		return oc
-
-####################################################################################################
-
-def SearchResults(sender,query='the',section_type="Search"):
-	dir = MediaContainer(title2=L(section_type), viewGroup="InfoList")
-	
-	data_url = SEARCH_API_URL % String.Quote(query, usePlus=False)
-
-	Log(data_url)
-
-	result = JSON.ObjectFromURL(data_url, cacheTime=0)
-
-	for program in result:
-		name = ""
-		subtitle = ""
-		thumb=R(ICON)
-		summary = ""
-		url = ""
-		duration = ""
-		title = ""
-		
-		try:
-			title = program["programName"] + ": " + program["name"]
-		except:
-			Log("Failed to load name")
-		
-
-		try:
-			subtitle = subtitle + L('Season') + str(program["season"]) + " "
-		except:
-			Log("Failed to load season")
-		
-		try:
-			subtitle = subtitle + L('Episode') + str(program["episode"])
-		except:
-			Log("Failed to load episode")
-		
-		try:
-			thumb = program["videoStillURL"]
-		except:
-			Log("Failed to load thumb")
-		try:
-			summary = program["shortDescription"]
-		except:
-			Log("Failed to load summary")
-		
-		try:
-			url = program["referenceId"]
-		except:
-			Log("Failed to load url")
-			
-		try:	
-			duration = program["length"]
-		except:
-			Log("Failed to load duration")
-		
-		dir.Append(Function(WebVideoItem(PlayVideo, title=title, duration=duration, subtitle=subtitle, summary=summary, thumb=thumb), url=url, kind=section_type))		
-	
-	if len(dir) == 0:
-		return MessageContainer(L('No_Results'),L('No_video'))
-	else:
-		return dir
-    
