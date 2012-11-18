@@ -1,0 +1,26 @@
+SEARCH_URL 	= "http://www.kanal5play.se/api/videos/search/%s"
+VIDEO_PAGE_URL	= "http://www.kanal5play.se/program/play/%s"
+
+####################################################################################################
+def Search(query):
+	oc = ObjectContainer(title2='Search Results')
+
+	results = JSON.ObjectFromURL(SEARCH_URL % query)
+	
+	for video in results:
+		title = video['name']
+		summary = video['shortDescription']
+		thumb = video['thumbnailURL']
+		duration = video['length']
+		date = Datetime.ParseDate(video['shownOnTVDate']).date()
+		url = VIDEO_PAGER_URL % video['referenceId']
+		
+		if video['type'] == "CLIP":
+			oc.add(VideoClipObject(url=url, title=title, summary=summary, duration=duration, originally_available_at=date, thumb=thumb))
+		elif video['type'] == "PROGRAM":
+			season = int(video['season'])
+			episode = int(video['episode'])
+			show = video['programName']
+			oc.add(EpisodeObject(url=url, title=title, summary=summary, show=show, index=episode, season=season, duration=duration, originally_available_at=date, thumb=thumb))
+
+	return oc
