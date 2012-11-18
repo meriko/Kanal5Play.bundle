@@ -1,12 +1,12 @@
-SEARCH_URL 	= "http://www.kanal5play.se/api/videos/search/%s"
-VIDEO_PAGE_URL	= "http://www.kanal5play.se/program/play/%s"
+SEARCH_URL = "http://www.kanal5play.se/api/videos/search/%s"
+VIDEO_PAGE_URL = "http://www.kanal5play.se/program/play/%s"
 
 ####################################################################################################
 def Search(query):
-	oc = ObjectContainer(title2='Search Results')
 
+	oc = ObjectContainer(title2='Search Results')
 	results = JSON.ObjectFromURL(SEARCH_URL % query)
-	
+
 	for video in results:
 		title = video['name']
 		summary = video['shortDescription']
@@ -14,7 +14,7 @@ def Search(query):
 		duration = video['length']
 		date = Datetime.ParseDate(video['startDate']).date()
 		url = VIDEO_PAGE_URL % video['referenceId']
-		
+
 		if video['type'] == "CLIP":
 			pass
 		elif video['type'] == "PROGRAM":
