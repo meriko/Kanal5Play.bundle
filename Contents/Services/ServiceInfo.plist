@@ -4,7 +4,7 @@
 <dict>
 	<key>Search</key>
 	<dict>
-		<key>Kanal5Play</key>
+		<key>Kanal 5 Play</key>
 		<dict>
 			<key>Identifier</key>
 			<string>com.plexapp.plugins.kanal5play</string>
