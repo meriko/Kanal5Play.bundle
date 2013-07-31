@@ -39,7 +39,7 @@ def MainMenu():
 
 def AddShows(oc, shows, base_url, check_duplicates=False):
 	for show in shows:
-                if int(show['playableEpisodesCount']) > 0:
+                if int(show['playableEpisodesCount']) > 0 and show['premium'] != True:
                         if check_duplicates:
                                 duplicate = False
                                 for s in oc.objects:
@@ -64,7 +64,7 @@ def ProgramShowMenu(show_id, show_title, thumb, base_url):
 
 	oc = ObjectContainer(title2=unicode(show_title))
 	data_url = base_url + API_EXT + ("/getMobileProgramContent?programId=%s" % show_id)
-	results = JSON.ObjectFromURL(data_url, cacheTime=0)
+	results = JSON.ObjectFromURL(data_url)
         for season in results['program']['seasonNumbersWithContent']:
                 season_url = base_url + API_EXT + ("/getMobileSeasonContent?programId=%s&seasonNumber=%s&format=FLASH" % (show_id, season))
                 title = unicode(show_title + " - " + ("SÃ¤song%s" % season))
@@ -92,7 +92,7 @@ def ProgramShowMenu(show_id, show_title, thumb, base_url):
 def Episodes(title, show_id, show_title, base_url, season_url):
 
 	oc          = ObjectContainer(title2=unicode(title))
-	results     = JSON.ObjectFromURL(season_url, cacheTime=0)
+	results     = JSON.ObjectFromURL(season_url)
         clips_found = False
 
 	for video in results['episodes']:
@@ -137,7 +137,7 @@ def Episodes(title, show_id, show_title, base_url, season_url):
 def Clips(title, show_id, show_title, base_url, season_url):
 
 	oc      = ObjectContainer(title2=unicode(title))
-	results = JSON.ObjectFromURL(season_url, cacheTime=0)
+	results = JSON.ObjectFromURL(season_url)
 
 	for video in results['episodes']:
 		if video['type'] == 'TVTV_EPISODE' or video['type'] == 'WEB_EPISODE':
