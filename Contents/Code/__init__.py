@@ -1,179 +1,270 @@
-NAME = L('Title')
-ART = 'art-default.jpg'
-ICON = 'icon-default.png'
+TITLE  = 'Kanal 5 Play'
+ART    = 'art-default.jpg'
+PREFIX = '/video/kanal5'
 
-BASE_5_URL     = 'http://www.kanal5play.se'
-BASE_9_URL     = 'http://www.kanal9play.se'
-API_EXT        = '/api'
-PROGRAMS_5_URL = BASE_5_URL + API_EXT + '/listPrograms'
-PROGRAMS_9_URL = BASE_9_URL + API_EXT + '/listPrograms'
-VIDEO_URL_EXT  = '/play/program/%s/video/%s'
+BASE_URL       = 'http://www.kanal%splay.se'
+API_URL        = BASE_URL + '/api'
+PROGRAMS_URL   = API_URL + '/listPrograms'
+VIDEO_LIST_URL = API_URL + '/listVideos?programId=%s&format=FLASH'
+VIDEO_URL      = BASE_URL + '/play/program/%s/video/%s'
+
+NO_PROGRAMS_FOUND_HEADER  = "Inga program funna"
+NO_PROGRAMS_FOUND_MESSAGE = unicode("Kunde ej hitta några program.")
 
 ####################################################################################################
 def Start():
+    ObjectContainer.art = R(ART)
+    HTTP.CacheTime      = CACHE_1HOUR 
 
-	ObjectContainer.art = R(ART)
-	ObjectContainer.title1 = NAME
-	DirectoryObject.thumb = R(ICON)
-	DirectoryObject.art = R(ART)
-
-	HTTP.CacheTime = CACHE_1HOUR
-
-@handler('/video/kanal5play', NAME, thumb=ICON, art=ART)
+####################################################################################################
+@handler(PREFIX, TITLE, art = ART)
 def MainMenu():
+    oc = ObjectContainer()
 
-	oc = ObjectContainer()
-	HTTP.PreCache(PROGRAMS_5_URL)
-	HTTP.PreCache(PROGRAMS_9_URL)
-
-        oc = AddShows(oc, JSON.ObjectFromURL(PROGRAMS_5_URL), BASE_5_URL)
-        ## Seems some shows exists in both Kanal5 and Kanal9 - so check for duplicates.
-        oc = AddShows(oc, JSON.ObjectFromURL(PROGRAMS_9_URL), BASE_9_URL, True)
-
-	if len(oc) == 0:
-		return ObjectContainer(header=L('No_Results'), message=L('No_video'))
-	else:
-                oc.objects.sort(key=lambda obj: obj.title)
-                oc.add(SearchDirectoryObject(identifier='com.plexapp.plugins.kanal5play', title=L('Search'), summary=L('Search_summary'), prompt=L('Searchsubtitle'), thumb=R('ikon-sok.png')))
-                return oc
-
-def AddShows(oc, shows, base_url, check_duplicates=False):
-	for show in shows:
-                if int(show['playableEpisodesCount']) > 0 and show['premium'] != True:
-                        if check_duplicates:
-                                duplicate = False
-                                for s in oc.objects:
-                                        if show['name'] == s.title:
-                                                duplicate = True
-                                                continue
-                                if duplicate:
-                                        continue
-                        title   = show['name']
-                        summary = show['description']
-                        show_id = show['id']
-                        thumb   = show['photoWithLogoUrl']
-                        oc.add(DirectoryObject(key=Callback(ProgramShowMenu, show_id=show_id, show_title=title, thumb=show['photoWithLogoUrl'],base_url=base_url), title=title, summary=summary, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON)))
-
-        return oc
-
-
-
-####################################################################################################
-@route('/video/kanal5play/programshowmenu')
-def ProgramShowMenu(show_id, show_title, thumb, base_url):
-
-	oc = ObjectContainer(title2=unicode(show_title))
-	data_url = base_url + API_EXT + ("/getMobileProgramContent?programId=%s" % show_id)
-	results = JSON.ObjectFromURL(data_url)
-        for season in results['program']['seasonNumbersWithContent']:
-                season_url = base_url + API_EXT + ("/getMobileSeasonContent?programId=%s&seasonNumber=%s&format=FLASH" % (show_id, season))
-                title = unicode(show_title + " - " + ("SÃ¤song%s" % season))
-                if len(results['program']['seasonNumbersWithContent']) > 1:
-                        oc.add(CreateDirObject(unicode("SÃ¤song %s" % season),
-                                               Callback(Episodes,
-                                                        title        = title,
-                                                        show_id      = show_id,
-                                                        show_title   = show_title,
-                                                        base_url     = base_url,
-                                                        season_url   = season_url
-                                                        ),
-                                               thumb
-                                               )
-                               )
-                else:
-                        return Episodes(title, show_id, show_title, base_url, season_url)
-
-	if len(oc) == 0:
-		return ObjectContainer(header=L('No_Results'), message=L('No_Programs'))
-	else:
-		return oc
-####################################################################################################
-@route('/video/kanal5play/Episodes')
-def Episodes(title, show_id, show_title, base_url, season_url):
-
-	oc          = ObjectContainer(title2=unicode(title))
-	results     = JSON.ObjectFromURL(season_url)
-        clips_found = False
-
-	for video in results['episodes']:
-		if video['type'] != 'TVTV_EPISODE' and video['type'] != 'WEB_EPISODE':
-                        clips_found = True
-			continue
-		title = video['episodeText'] + " - " + video['title']
-		summary = video['description']
-		try: duration = int(video['length'])
-		except: duration = None
-		episode = int(video['episodeNumber'])
-		season = int(video['seasonNumber'])
-		try: airdate = Datetime.FromTimestamp(int(video['shownOnTvDateTimestamp'])/1000)
-		except: airdate = None
-		thumb = video['posterUrl']
-		video_id = video['id']
-		url = base_url + (VIDEO_URL_EXT % (show_id, video_id))
-
-		oc.add(EpisodeObject(url=url, title=title, summary=summary, show=show_title, duration=duration, index=episode, season=season, originally_available_at=airdate, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON)))
-
-        sortOnAirData(oc)
-
-        if clips_found:
-                new_oc = ObjectContainer(title2=unicode(title))
-                new_oc.add(CreateDirObject("Klipp",
-                                           Callback(Clips,
-                                                    title        = unicode(show_title + " - " + ("SÃ¤song%s" % season)),
-                                                    show_id      = show_id,
-                                                    show_title   = show_title,
-                                                    base_url     = base_url,
-                                                    season_url   = season_url
-                                                    )
-                                           ))
-                for ep in oc.objects:
-                        new_oc.add(ep)
-                return new_oc
+    for channelNo in ["5", "9"]:
+        page = HTML.ElementFromURL(BASE_URL % channelNo)
+        
+        try:
+            description = unicode(page.xpath('//meta[@property="og:description"]/@content')[0])
+        except:
+            description = None
+        
+        if channelNo == "5":
+            thumb = R('icon-kanal5.png')
         else:
-                return oc
+            thumb = R('icon-kanal9.png')
+            
+        title = "Kanal" + channelNo
+    
+        oc.add(
+            DirectoryObject(
+                key = 
+                    Callback(
+                        Shows, 
+                        channelNo = channelNo,
+                    ),
+                title = title,
+                summary = description,
+                thumb = thumb
+            )
+        )
+ 
+    return oc
 
 ####################################################################################################
-@route('/video/kanal5play/Clips')
-def Clips(title, show_id, show_title, base_url, season_url):
+@route(PREFIX + '/shows')
+def Shows(channelNo):
 
-	oc      = ObjectContainer(title2=unicode(title))
-	results = JSON.ObjectFromURL(season_url)
+    oc    = ObjectContainer(title1 = "Kanal" + channelNo)
+    shows = JSON.ObjectFromURL(PROGRAMS_URL % channelNo)
 
-	for video in results['episodes']:
-		if video['type'] == 'TVTV_EPISODE' or video['type'] == 'WEB_EPISODE':
-			continue
+    for show in shows:
+        if not show['premium'] and (int(show['playableEpisodesCount']) > 0 or int(show['playableVideosCount']) > 0): 
+            title   = unicode(show['name'])
+            summary = unicode(show['description'])
+            show_id = show['id']
+        
+            try:
+                thumb = show['photoWithLogoUrl']
+            except:
+                try:
+                    thumb = show['photoUrl']
+                except:
+                    thumb = None
 
-		title = video['episodeText'] + " - " + video['title']
-		summary = video['description']
-		try: duration = int(video['length'])
-		except: duration = None
-		try: airdate = Datetime.FromTimestamp(int(video['shownOnTvDateTimestamp'])/1000)
-		except: airdate = None
-		season = int(video['seasonNumber'])
-		thumb = video['posterUrl']
-		video_id = video['id']
-		url = base_url + (VIDEO_URL_EXT % (show_id, video_id))
+            oc.add(
+                DirectoryObject(
+                    key = 
+                        Callback(
+                            ProgramShowChoiceMenu,
+                            title = title,
+                            channelNo = channelNo,
+                            show_id = show_id,
+                            show_title = title,
+                            hasEpisodes = int(show['playableEpisodesCount']) > 0,
+                            hasClips = int(show['playableVideosCount']) > 0,
+                            thumb = thumb,
+                            summary = summary
+                        ),
+                    title = title,
+                    summary = summary,
+                    thumb = thumb
+                )
+            )
 
-		oc.add(EpisodeObject(url=url, title=title, summary=summary, duration=duration, season=season, originally_available_at=airdate, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON)))
+    if len(oc) < 1:
+        oc.header  = NO_PROGRAMS_FOUND_HEADER
+        oc.message = NO_PROGRAMS_FOUND_MESSAGE
+        
+    return oc
 
-	if len(oc) == 0:
-		return ObjectContainer(header=L('No_Results'), message=L('No_Programs'))
-	else:
-                sortOnAirData(oc)
-		return oc
+####################################################################################################
+@route(PREFIX + '/programshowchoicemenu', hasEpisodes = bool, hasClips = bool)
+def ProgramShowChoiceMenu(title, channelNo, show_id, show_title, hasEpisodes, hasClips, thumb, summary):
+    title   = unicode(title)
+    summary = unicode(summary) 
 
-def CreateDirObject(name, key, thumb=R(ICON), summary=None):
-        myDir         = DirectoryObject()
-        myDir.title   = name
-        myDir.key     = key
-        myDir.summary = summary
-        myDir.thumb   = thumb
-        myDir.art     = R(ART)
-        return myDir
+    oc = ObjectContainer(title1 = title)
+    
+    if hasEpisodes and hasClips:
+        oc.add(
+            DirectoryObject(
+                key = 
+                    Callback(
+                        ShowSeasons,
+                        title = title, 
+                        channelNo = channelNo,
+                        show_id = show_id,
+                        show_title = show_title,
+                        summary = summary,
+                        thumb = thumb
+                    ),
+                title = "Hela program",
+                thumb = thumb,
+                summary = summary
+            )
+        )
+        
+        oc.add(
+            DirectoryObject(
+                key = 
+                    Callback(
+                        ProgramShowMenu,
+                        channelNo = channelNo,
+                        show_id = show_id,
+                        show_title = show_title,
+                        episodeReq = False,
+                    ),
+                title = "Klipp",
+                thumb = thumb,
+                summary = summary
+            )
+        )
+        
+    elif hasEpisodes:
+        oc.add(
+            DirectoryObject(
+                key = 
+                    Callback(
+                        ShowSeasons,
+                        title = title, 
+                        channelNo = channelNo,
+                        show_id = show_id,
+                        show_title = show_title
+                    ),
+                title = "Hela program",
+                thumb = thumb,
+                summary = summary
+            )
+        )
+        
+    elif hasClips:
+        return ProgramShowMenu(
+                    channelNo = channelNo,
+                    show_id = show_id,
+                    show_title = show_title,
+                    episodeReq = False,
+        )
+                               
+    return oc
 
-def sortOnAirData(Objects):
-    for obj in Objects.objects:
-        if obj.originally_available_at == None:
-            Log("JTDEBUG - air date missing for %s" % obj.title)
-            return Objects.objects.reverse()
-    return Objects.objects.sort(key=lambda obj: (obj.originally_available_at,obj.title))
+
+####################################################################################################
+@route(PREFIX + '/showseasons')
+def ShowSeasons(title, channelNo, show_id, show_title, summary, thumb):
+    title   = unicode(title)
+    summary = unicode(summary)
+    
+    oc    = ObjectContainer(title1 = title)
+    shows = JSON.ObjectFromURL(PROGRAMS_URL % channelNo)
+
+    for show in shows:
+        if str(show['id']) == show_id:
+            for season in show['seasonNumbersWithContent']:
+                oc.add(
+                    DirectoryObject(
+                        key = 
+                            Callback(
+                                ProgramShowMenu,
+                                channelNo = channelNo,
+                                show_id = show_id,
+                                show_title = title,
+                                episodeReq = True,
+                                seasonNo = season
+                            ),
+                        title = unicode("Säsong " + str(season)),
+                        summary = summary,
+                        thumb = thumb
+                    )
+                )
+    
+    oc.objects.sort(key = lambda obj: obj.title, reverse = True)
+    
+    return oc 
+
+####################################################################################################
+@route(PREFIX + '/programshowmenu', episodeReq = bool, seasonNo = int)
+def ProgramShowMenu(channelNo, show_id, show_title, episodeReq, seasonNo = None):
+    show_title = unicode(show_title)
+
+    oc       = ObjectContainer(title1 = show_title)
+    data_url = VIDEO_LIST_URL % (channelNo, show_id)
+    results  = JSON.ObjectFromURL(data_url)
+
+    for video in results:
+        if (video['type'] != 'TVTV_EPISODE' and episodeReq) or (video['type'] == 'TVTV_EPISODE' and not episodeReq):
+            continue
+
+        title   = unicode(video['title'])
+        summary = unicode(video['description'])
+        
+        try: 
+            duration = int(video['length'])
+        except: 
+            duration = None
+        
+        if episodeReq:
+            episode = int(video['episodeNumber'])
+            season  = int(video['seasonNumber'])
+            
+            if not season == seasonNo:
+                continue
+        else:
+            episode = None
+            season  = None
+            
+        try:
+            airdate = Datetime.FromTimestamp(int(video['shownOnTvDateTimestamp'])/1000)
+        except: 
+            airdate = None
+        
+        thumb    = video['posterUrl']
+        video_id = video['id']
+        url      = VIDEO_URL % (channelNo, show_id, video_id)
+
+        oc.add(
+            EpisodeObject(
+                url = url,
+                title = title,
+                summary = summary,
+                show = show_title,
+                duration = duration, 
+                index = episode,
+                season = season,
+                originally_available_at = airdate,
+                thumb = thumb
+            )
+        )
+
+
+
+    if len(oc) < 1:
+        oc.header  = NO_PROGRAMS_FOUND_HEADER
+        oc.message = NO_PROGRAMS_FOUND_MESSAGE
+        
+    elif episodeReq:
+        oc.objects.sort(key = lambda obj: obj.index, reverse = True)
+          
+    return oc
+
+
