@@ -1,0 +1,38 @@
+SEARCH_5_URL     = "http://www.kanal5play.se/api/publicSearch?query=%s"
+VIDEO_PAGE_5_URL = "http://www.kanal5play.se/play%s"
+
+SEARCH_9_URL     = "http://www.kanal9play.se/api/publicSearch?query=%s"
+VIDEO_PAGE_9_URL = "http://www.kanal9play.se/play%s"
+
+####################################################################################################
+def Search(query):
+
+	oc = ObjectContainer(title1='Kanal 5 Play', title2='Search Results')
+	results = JSON.ObjectFromURL(SEARCH_5_URL % String.Quote(query))
+
+        oc = decode_results(JSON.ObjectFromURL(SEARCH_5_URL % String.Quote(query)),
+                            VIDEO_PAGE_5_URL,
+                            oc)
+        oc = decode_results(JSON.ObjectFromURL(SEARCH_9_URL % String.Quote(query)),
+                            VIDEO_PAGE_9_URL,
+                            oc)
+	return oc
+
+def decode_results(results, video_page, oc):
+        for video in results['videos']:
+		title = video['name']
+		summary = video['description']
+		thumb = video['image']
+		duration = video['videoLength']
+		date = Datetime.ParseDate(video['publishDate']).date()
+		url = video_page % video['link']
+
+		if video['videoType'] == "clip":
+			pass
+		elif video['videoType'] == "episode":
+			season = int(video['videoSeason'])
+			episode = int(video['videoEpisode'])
+			show = video['programName']
+			oc.add(EpisodeObject(url=url, title=title, summary=summary, show=show, index=episode, season=season, duration=duration, originally_available_at=date, thumb=thumb))
+
+        return oc
