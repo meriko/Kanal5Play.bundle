@@ -50,7 +50,7 @@ def MainMenu():
                 thumb = thumb
             )
         )
- 
+    oc.add(SearchDirectoryObject(identifier='com.plexapp.plugins.kanal5play', title='Sök', summary='Sök efter program och klipp på Kanal 5/9 Play', prompt='Sök på Kanal 5/9 Play', thumb=R('ikon-sok.png'))) 
     return oc
 
 ####################################################################################################
