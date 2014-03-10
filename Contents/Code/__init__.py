@@ -2,12 +2,13 @@ TITLE  = 'Kanal 5 Play'
 ART    = 'art-default.jpg'
 PREFIX = '/video/kanal5'
 
-BASE_URL       = 'http://www.kanal%splay.se'
-API_URL        = BASE_URL + '/api'
-START_URL      = API_URL + '/getMobileStartContent?format=FLASH'
-PROGRAMS_URL   = API_URL + '/getMobileFindProgramsContent'
-VIDEO_LIST_URL = API_URL + '/getMobileSeasonContent?programId=%s&seasonNumber=%s&format=FLASH'
-VIDEO_URL      = BASE_URL + '/play/program/%s/video/%s'
+BASE_URL        = 'http://www.kanal%splay.se'
+API_URL         = BASE_URL + '/api'
+START_URL       = API_URL + '/getMobileStartContent?format=FLASH'
+PROGRAMS_URL    = API_URL + '/getMobileFindProgramsContent'
+VIDEO_LIST_URL  = API_URL + '/getMobileSeasonContent?programId=%s&seasonNumber=%s&format=FLASH'
+VIDEO_URL       = BASE_URL + '/play/program/%s/video/%s'
+LIVE_EVENTS_URL = API_URL + '/live/getCurrentEvents'
 
 NO_PROGRAMS_FOUND_HEADER  = "Inga program funna"
 NO_PROGRAMS_FOUND_MESSAGE = unicode("Kunde ej hitta några program.")
@@ -22,7 +23,7 @@ def Start():
 def MainMenu():
     oc = ObjectContainer()
 
-    for channelNo in ["5", "9"]:
+    for channelNo in ["5", "9", "11"]:
         page = HTML.ElementFromURL(BASE_URL % channelNo)
         
         try:
@@ -32,8 +33,10 @@ def MainMenu():
         
         if channelNo == "5":
             thumb = R('icon-kanal5.png')
-        else:
+        elif channelNo == "9":
             thumb = R('icon-kanal9.png')
+        else:
+            thumb = R('icon-kanal11.png')
             
         title = "Kanal" + channelNo
     
@@ -50,7 +53,17 @@ def MainMenu():
                 thumb = thumb
             )
         )
-    oc.add(SearchDirectoryObject(identifier='com.plexapp.plugins.kanal5play', title='Sök', summary='Sök efter program och klipp på Kanal 5/9 Play', prompt='Sök på Kanal 5/9 Play', thumb=R('ikon-sok.png'))) 
+        
+    oc.add(
+        SearchDirectoryObject(
+            identifier = 'com.plexapp.plugins.kanal5play',
+            title = unicode('Sök'),
+            summary = unicode('Sök efter program och klipp på Kanal 5/9/11 Play'),
+            prompt = unicode('Sök på Kanal 5/9/11 Play'),
+            thumb = R('ikon-sok.png')
+        )
+    ) 
+    
     return oc
 
 ####################################################################################################
@@ -94,7 +107,42 @@ def MainChannelMenu(channelNo, thumb):
         )
     )
     
+    oc.add(
+        DirectoryObject(
+            key =
+                Callback(
+                    Live,
+                    channelNo = channelNo
+                ),
+            title = unicode("Live"),
+            thumb = thumb
+        )
+    )
+    
     return oc
+
+####################################################################################################
+@route(PREFIX + '/live')
+def Live(channelNo):
+    oc   = ObjectContainer(title2 = "Live")
+    data = JSON.ObjectFromURL(LIVE_EVENTS_URL % channelNo, cacheTime = 0)
+    
+    for event in data['liveEvents']:
+        if 'liveStreamingParams' in event:
+            oc.add(
+                CreateVideoClipObject(
+                    url = event['liveStreamingParams']['streams'][0]['source'],
+                    title = unicode(event['title'].strip()), 
+                    thumb = event['photoUrl'],
+                    desc = unicode(event['description'].strip())
+                )
+            )
+
+    if len(oc) < 1:
+        oc.header  = NO_PROGRAMS_FOUND_HEADER
+        oc.message = unicode('Inga Live events tillgängliga för tillfället') 
+       
+    return oc 
 
 ####################################################################################################
 @route(PREFIX + '/popularshows')
@@ -147,15 +195,17 @@ def LatestVideos(channelNo):
     data = JSON.ObjectFromURL(START_URL % channelNo)
     
     for video in data['newEpisodeVideos']:
-        if not video['premium']: 
+        if not video['premium'] and not video['widevineRequired']: 
             title   = unicode(video['title'])
             summary = unicode(video['description'])
             show    = unicode(video['program']['name'])
         
             try: 
                 duration = int(video['length'])
-            except: 
-                duration = None
+                if not duration > 0:
+                    continue
+            except:
+                continue
 
             episode = int(video['episodeNumber'])
             season  = int(video['seasonNumber'])
@@ -269,6 +319,14 @@ def ShowSeasons(title, channelNo, show_id, show_title, summary, thumb):
     
     oc.objects.sort(key = lambda obj: obj.title, reverse = True)
     
+    if len(oc) == 1:
+        return ProgramShowMenu(
+            channelNo = channelNo,
+            show_id = show_id,
+            show_title = title,
+            seasonNo = season
+        )
+    
     return oc 
 
 ####################################################################################################
@@ -276,18 +334,26 @@ def ShowSeasons(title, channelNo, show_id, show_title, summary, thumb):
 def ProgramShowMenu(channelNo, show_id, show_title, seasonNo):
     show_title = unicode(show_title)
 
-    oc       = ObjectContainer(title1 = show_title)
+    oc       = ObjectContainer(title2 = show_title)
     data_url = VIDEO_LIST_URL % (channelNo, show_id, seasonNo)
     results  = JSON.ObjectFromURL(data_url)
+    
+    widevine = False
 
-    for video in results["episodes"]:
+    for video in results["episodes"]:            
+        if video['widevineRequired']:
+            widevine = True
+            continue
+            
         title   = unicode(video['title'])
         summary = unicode(video['description'])
         
-        try: 
+        try:
             duration = int(video['length'])
-        except: 
-            duration = None
+            if not duration > 0:
+                continue
+        except:
+            continue
 
         episode = int(video['episodeNumber'])
         season  = int(video['seasonNumber'])
@@ -321,10 +387,38 @@ def ProgramShowMenu(channelNo, show_id, show_title, seasonNo):
     if len(oc) < 1:
         oc.header  = NO_PROGRAMS_FOUND_HEADER
         oc.message = NO_PROGRAMS_FOUND_MESSAGE
+
+        if widevine:
+            oc.message = oc.message + unicode('\r\nProgrammet kan ej visas pga rättighetsskäl\r\n')     
         
     else:
         oc.objects.sort(key = lambda obj: obj.index, reverse = True)
           
     return oc
 
+####################################################################################################
+@route(PREFIX + '/createvideoclipobject')
+def CreateVideoClipObject(url, title, thumb, desc, include_container=False):
 
+  videoclip_obj = VideoClipObject(
+      key = Callback(CreateVideoClipObject, url=url, title=title, thumb=thumb, desc=desc, include_container=True),
+      rating_key = url,
+      title = title,
+      thumb = thumb,
+      summary = desc,
+      items = [
+        MediaObject(
+          parts = [
+            PartObject(key=HTTPLiveStreamURL(url))
+          ],
+          video_resolution = 'sd',
+          audio_channels = 2,
+          optimized_for_streaming = True
+        )
+      ]
+  )
+
+  if include_container:
+      return ObjectContainer(objects=[videoclip_obj])
+  else:
+      return videoclip_obj
