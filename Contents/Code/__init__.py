@@ -195,15 +195,17 @@ def LatestVideos(channelNo):
     data = JSON.ObjectFromURL(START_URL % channelNo)
     
     for video in data['newEpisodeVideos']:
-        if not video['premium']: 
+        if not video['premium'] and not video['widevineRequired']: 
             title   = unicode(video['title'])
             summary = unicode(video['description'])
             show    = unicode(video['program']['name'])
         
             try: 
                 duration = int(video['length'])
-            except: 
-                duration = None
+                if not duration > 0:
+                    continue
+            except:
+                continue
 
             episode = int(video['episodeNumber'])
             season  = int(video['seasonNumber'])
@@ -317,6 +319,14 @@ def ShowSeasons(title, channelNo, show_id, show_title, summary, thumb):
     
     oc.objects.sort(key = lambda obj: obj.title, reverse = True)
     
+    if len(oc) == 1:
+        return ProgramShowMenu(
+            channelNo = channelNo,
+            show_id = show_id,
+            show_title = title,
+            seasonNo = season
+        )
+    
     return oc 
 
 ####################################################################################################
@@ -338,10 +348,12 @@ def ProgramShowMenu(channelNo, show_id, show_title, seasonNo):
         title   = unicode(video['title'])
         summary = unicode(video['description'])
         
-        try: 
+        try:
             duration = int(video['length'])
-        except: 
-            duration = None
+            if not duration > 0:
+                continue
+        except:
+            continue
 
         episode = int(video['episodeNumber'])
         season  = int(video['seasonNumber'])
