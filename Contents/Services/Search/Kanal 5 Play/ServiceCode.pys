@@ -53,7 +53,7 @@ def decode_results(results, channelNo, oc, query):
         date = Datetime.ParseDate(show['publishDate']).date()
         url = VIDEO_PAGE_URL % (channelNo, show['link'])
         FOUND_SHOWS.append(title)
-        oc.add(TVShowObject(key=Callback(ShowSeasons, title=title, channelNo=channelNo, show_id=show['id'], show_title=title, summary=None,thumb=thumb), title=title, originally_available_at=date, thumb=thumb))
+        oc.add(TVShowObject(key=Callback(ShowSeasons, title=title, channelNo=channelNo, show_id=show['id'], show_title=title, summary=None,thumb=thumb), title=title, originally_available_at=date, thumb=thumb, rating_key=show['id']))
 
     if len(query) == 1:
         # In case query single character - only return shows starting with it
