@@ -1,0 +1,193 @@
+import re
+
+ART = 'art-default.jpg'
+
+CHANNEL_LIST    = ["5", "9", "11"]
+
+BASE_URL        = 'http://www.kanal%splay.se'
+API_URL         = BASE_URL + '/api'
+PROGRAMS_URL    = API_URL + '/getMobileFindProgramsContent'
+VIDEO_LIST_URL  = API_URL + '/getMobileSeasonContent?programId=%s&seasonNumber=%s&format=FLASH'
+VIDEO_URL       = BASE_URL + '/play/program/%s/video/%s'
+
+NO_PROGRAMS_FOUND_HEADER  = "Inga program funna"
+NO_PROGRAMS_FOUND_MESSAGE = unicode("Kunde ej hitta några program.")
+
+####################################################################################################
+def GetShows(oc, showList, channelNo):
+    for show in showList:
+        if 'program' in show:
+            show = show['program']
+        
+        if not show['premium'] and int(show['playableEpisodesCount']) > 0: 
+            title = unicode(show['name'])
+
+            summary = unicode(show['description']) if 'description' in show else None
+            show_id = str(show['id'])
+        
+            try:
+                thumb = show['photoWithLogoUrl']
+            except:
+                try:
+                    thumb = show['photoUrl']
+                except:
+                    thumb = GetChannelThumb(channelNo)
+
+            oc.add(
+                DirectoryObject(
+                    key = 
+                        Callback(
+                            ShowSeasons,
+                            title = title, 
+                            channelNo = channelNo,
+                            show_id = show_id,
+                            show_title = title,
+                            summary = summary,
+                            thumb = thumb
+                        ),
+                    title = title,
+                    summary = summary,
+                    thumb = thumb
+                )
+            )
+        
+    return oc
+
+####################################################################################################
+# @route(PREFIX + '/showseasons')
+def ShowSeasons(title, channelNo, show_id, show_title, summary, thumb):
+    title   = unicode(title)
+    if summary:
+        summary = unicode(summary)
+
+    oc   = ObjectContainer(title2 = title)
+    data = JSON.ObjectFromURL(PROGRAMS_URL % channelNo)
+
+    for program in data['programsWithTemperatures']:
+        show = program['program']
+        if str(show['id']) == str(show_id):
+            for season in show['seasonNumbersWithContent']:
+                dir_title = unicode(show_title + " - " + ("Säsong %s" % season))
+                oc.add(
+                    DirectoryObject(
+                        key = 
+                            Callback(
+                                ProgramShowMenu,
+                                title = dir_title,
+                                channelNo = channelNo,
+                                show_id = show_id,
+                                show_title = title,
+                                seasonNo = season
+                            ),
+                        title = unicode("Säsong " + str(season)),
+                        summary = summary,
+                        thumb = thumb
+                    )
+                )
+
+    oc.objects.sort(key = lambda obj: int(re.sub("[^0-9]+","",obj.title)), reverse = True)
+
+    if len(oc) == 1:
+        return ProgramShowMenu(
+            title = dir_title,
+            channelNo = channelNo,
+            show_id = show_id,
+            show_title = title,
+            seasonNo = season
+        )
+    
+    return oc 
+
+####################################################################################################
+# @route(PREFIX + '/programshowmenu', seasonNo = int)
+def ProgramShowMenu(title, channelNo, show_id, show_title, seasonNo):
+    show_title = unicode(show_title)
+
+    oc       = ObjectContainer(title2 = unicode(title))
+    data_url = VIDEO_LIST_URL % (channelNo, show_id, seasonNo)
+    results  = JSON.ObjectFromURL(data_url)
+
+    oc = GetEpisodes(oc, results["episodes"], channelNo, seasonNo)
+
+    oc.objects.sort(key = lambda obj: obj.index, reverse = True)
+    return oc
+
+####################################################################################################
+def GetEpisodes(oc, episodeList, channelNo, seasonNo=None):
+    widevine = False
+
+    for video in episodeList:
+        if video['premium']:
+            continue
+        if video['widevineRequired']:
+            widevine = True
+            continue
+
+        show_title = unicode(video['program']['name'])
+        if not seasonNo:
+            title = show_title + " - " + unicode(video['episodeText'])
+        else:
+            title = unicode(video['episodeText'])
+        if video['title'] != show_title:
+            title = title + " - " + unicode(video['title'])
+
+        summary = unicode(video['description']) if 'description' in video else None
+        
+        try:
+            duration = int(video['length'])
+            if not duration > 0:
+                continue
+        except:
+            continue
+
+        episode = int(video['episodeNumber'])
+        season  = int(video['seasonNumber'])
+
+        if seasonNo and not season == seasonNo:
+            continue # can this happen?
+
+        try:
+            airdate = Datetime.FromTimestamp(int(video['shownOnTvDateTimestamp'])/1000)
+        except: 
+            airdate = None
+        
+        thumb    = video['posterUrl']
+        video_id = video['id']
+        show_id  = video['program']['id']
+        url      = VIDEO_URL % (channelNo, show_id, video_id)
+
+        oc.add(
+            EpisodeObject(
+                url = url,
+                title = title,
+                summary = summary,
+                show = show_title,
+                duration = duration, 
+                index = episode,
+                season = season,
+                originally_available_at = airdate,
+                thumb = thumb
+            )
+        )
+
+    if len(oc) < 1:
+        oc = GetNoShowContainer(oc, widevine)
+
+    return oc
+
+####################################################################################################
+def GetChannelThumb(channelNo):
+    if channelNo == '5':
+        return R('icon-kanal5.png')
+    elif channelNo == '9':
+        return R('icon-kanal9.png')
+    elif channelNo == '11':
+        return R('icon-kanal11.png')
+
+def GetNoShowContainer(oc, widevine=False):
+    oc.header  = NO_PROGRAMS_FOUND_HEADER
+    oc.message = NO_PROGRAMS_FOUND_MESSAGE
+
+    if widevine:
+        oc.message = oc.message + unicode('\r\nProgrammet kan ej visas pga rättighetsskäl\r\n')
+    return oc
