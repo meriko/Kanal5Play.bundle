@@ -34,7 +34,7 @@ def GetShows(oc, showList, channelNo):
                     thumb = GetChannelThumb(channelNo)
 
             oc.add(
-                DirectoryObject(
+                TVShowObject(
                     key = 
                         Callback(
                             ShowSeasons,
@@ -45,9 +45,11 @@ def GetShows(oc, showList, channelNo):
                             summary = summary,
                             thumb = thumb
                         ),
+                    rating_key = show_id,
                     title = title,
                     summary = summary,
-                    thumb = thumb
+                    thumb = thumb,
+                    art = R(ART)
                 )
             )
         
@@ -60,16 +62,20 @@ def ShowSeasons(title, channelNo, show_id, show_title, summary, thumb):
     if summary:
         summary = unicode(summary)
 
-    oc   = ObjectContainer(title2 = title)
+    oc   = ObjectContainer(title1 = 'Kanal %s' % channelNo, title2 = title)
     data = JSON.ObjectFromURL(PROGRAMS_URL % channelNo)
 
     for program in data['programsWithTemperatures']:
         show = program['program']
+        
+        if not 'seasonNumbersWithContent' in show:
+            continue
+            
         if str(show['id']) == str(show_id):
             for season in show['seasonNumbersWithContent']:
                 dir_title = unicode(show_title + " - " + ("Säsong %s" % season))
                 oc.add(
-                    DirectoryObject(
+                    SeasonObject(
                         key = 
                             Callback(
                                 ProgramShowMenu,
@@ -77,11 +83,16 @@ def ShowSeasons(title, channelNo, show_id, show_title, summary, thumb):
                                 channelNo = channelNo,
                                 show_id = show_id,
                                 show_title = title,
-                                seasonNo = season
+                                seasonNo = season,
+                                thumb = thumb
                             ),
                         title = unicode("Säsong " + str(season)),
                         summary = summary,
-                        thumb = thumb
+                        thumb = thumb,
+                        art = R(ART),
+                        rating_key = show_id,
+                        show = title,
+                        index = int(season)
                     )
                 )
 
@@ -93,27 +104,28 @@ def ShowSeasons(title, channelNo, show_id, show_title, summary, thumb):
             channelNo = channelNo,
             show_id = show_id,
             show_title = title,
-            seasonNo = season
+            seasonNo = season,
+            thumb = thumb
         )
-    
-    return oc 
+
+    return oc
 
 ####################################################################################################
 # @route(PREFIX + '/programshowmenu', seasonNo = int)
-def ProgramShowMenu(title, channelNo, show_id, show_title, seasonNo):
+def ProgramShowMenu(title, channelNo, show_id, show_title, seasonNo, thumb):
     show_title = unicode(show_title)
 
-    oc       = ObjectContainer(title2 = unicode(title))
+    oc       = ObjectContainer(title1 = unicode(title), title2 = unicode('Säsong %s' % seasonNo))
     data_url = VIDEO_LIST_URL % (channelNo, show_id, seasonNo)
     results  = JSON.ObjectFromURL(data_url)
 
-    oc = GetEpisodes(oc, results["episodes"], channelNo, seasonNo)
+    oc = GetEpisodes(oc, results["episodes"], channelNo, thumb, seasonNo)
 
     oc.objects.sort(key = lambda obj: obj.index, reverse = True)
     return oc
 
 ####################################################################################################
-def GetEpisodes(oc, episodeList, channelNo, seasonNo=None):
+def GetEpisodes(oc, episodeList, channelNo, art, seasonNo=None):
     widevine = False
 
     for video in episodeList:
@@ -166,7 +178,8 @@ def GetEpisodes(oc, episodeList, channelNo, seasonNo=None):
                 index = episode,
                 season = season,
                 originally_available_at = airdate,
-                thumb = thumb
+                thumb = thumb,
+                art = art
             )
         )
 
