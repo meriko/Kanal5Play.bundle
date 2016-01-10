@@ -193,7 +193,18 @@ def Seasons(title, id, thumb, art):
     show = unicode(title)
     oc = ObjectContainer(title2 = show)
     
-    json_data = JSON.ObjectFromURL('http://www.dplay.se/api/v2/content/device/shows/%s/seasons?appVersion=3.0.0&platform=IPHONE&platformVersion=9.0.2&realm=DPLAYSE&site=SE' % id)
+    try:
+        json_data = JSON.ObjectFromURL('http://www.dplay.se/api/v2/content/device/shows/%s/seasons?appVersion=3.0.0&platform=IPHONE&platformVersion=9.0.2&realm=DPLAYSE&site=SE' % id)
+    except:
+        # Show with only one season
+        return Episodes(
+            title = show,
+            season = None,
+            season_id = None,
+            show_id = id,
+            thumb = thumb,
+            art = thumb
+        )
     
     for item in json_data['data']:
         if not item['type'] == 'season':
@@ -236,7 +247,11 @@ def Episodes(title, season, season_id, show_id, thumb, art):
         
     for item in json_data['data']:
         try:
-            if not (str(item['season']['id']) == season_id):
+            if not season_id:
+                # Show with only one season
+                pass
+                
+            elif not (str(item['season']['id']) == season_id):
                 continue
         except:
             continue
