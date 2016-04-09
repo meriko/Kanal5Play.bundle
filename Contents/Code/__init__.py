@@ -222,7 +222,7 @@ def Seasons(title, id, thumb, art):
         oc.add(
             SeasonObject(
                 key = Callback(Episodes, title = title, season = str(index), season_id = season_id, show_id = id, thumb = thumb, art = thumb),
-                rating_key = id,
+                rating_key = season_id,
                 title = title,
                 summary = summary,
                 show = show,
